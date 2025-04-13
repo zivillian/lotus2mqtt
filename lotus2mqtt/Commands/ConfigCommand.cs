@@ -75,11 +75,12 @@ public class ConfigCommand : BaseCommand
 
     private async Task GetAuthTokenAsync(CancellationToken cancellationToken)
     {
-        if (!String.IsNullOrEmpty(Config.Account.AccessToken)) return;//todo check token
+        if (await CheckAccessTokenAsync(cancellationToken)) return;
         var response = await LotusClient.GetCodeAsync(cancellationToken);
         var tokens = await EcloudClient.SecureAsync(response.AccessCode, cancellationToken);
         Config.Account.AccessToken = tokens.AccessToken;
         Config.Account.RefreshToken = tokens.RefreshToken;
+        Config.Account.UserId = tokens.UserId;
         await SaveConfigAsync(cancellationToken);
     }
 

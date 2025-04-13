@@ -46,11 +46,11 @@ public abstract class BaseCommand
         }
 
         var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
-        var httpOptions = new HttpClientFactoryOptions
+        var lotusHttpOptions = new HttpClientFactoryOptions
         {
             ShouldRedactHeaderValue = x => "token".Equals(x, StringComparison.InvariantCultureIgnoreCase),
         };
-        var httpClient = new HttpClient(new LoggingHttpMessageHandler(httpLogger, httpOptions)
+        var httpClient = new HttpClient(new LoggingHttpMessageHandler(httpLogger, lotusHttpOptions)
         {
             InnerHandler = new HttpClientHandler()
         });
@@ -63,9 +63,13 @@ public abstract class BaseCommand
                 EcloudClient.ClientCert
             }
         };
+        var ecloudHttpOptions = new HttpClientFactoryOptions
+        {
+            ShouldRedactHeaderValue = x => "authorization".Equals(x, StringComparison.InvariantCultureIgnoreCase),
+        };
         EcloudClient = new EcloudClient(new HttpClient(new LotusSignatureHandler
         {
-            InnerHandler = new LoggingHttpMessageHandler(httpLogger, httpOptions)
+            InnerHandler = new LoggingHttpMessageHandler(httpLogger, ecloudHttpOptions)
             {
                 InnerHandler = certHandler
             }
@@ -95,6 +99,26 @@ public abstract class BaseCommand
         {
             LotusClient.SetToken(null);
             return false;
+        }
+    }
+
+    protected async Task<bool> CheckAccessTokenAsync(CancellationToken cancellationToken)
+    {
+        EcloudClient.SetToken(Config.Account.AccessToken);
+        try
+        {
+            await EcloudClient.GetVehicleState("X", "0", cancellationToken);
+            return true;
+        }
+        catch (EcloudHttpException ex)
+        {
+            if (ex.Response.Code == "1402")
+            {
+                LotusClient.SetToken(null);
+                return false;
+            }
+
+            return true;
         }
     }
 }

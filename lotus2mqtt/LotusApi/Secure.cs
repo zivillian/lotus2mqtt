@@ -18,4 +18,7 @@ public class SecureResponse
 
     [JsonPropertyName("refreshToken")]
     public string RefreshToken { get; set; }
+
+    [JsonPropertyName("userId")]
+    public string UserId { get; set; }
 }

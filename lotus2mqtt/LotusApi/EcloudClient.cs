@@ -50,7 +50,18 @@ public class EcloudClient
         _client.DefaultRequestHeaders.Add("x-app-id", "com.geely.lotusInternational");
         _client.DefaultRequestHeaders.Add("x-api-signature-version", "1.0");
         _client.DefaultRequestHeaders.Add("x-operator-code", "LOTUS");
-        
+    }
+
+    public void SetToken(string? token)
+    {
+        if (String.IsNullOrEmpty(token))
+        {
+            _client.DefaultRequestHeaders.Remove("Authorization");
+        }
+        else
+        {
+            _client.DefaultRequestHeaders.Add("Authorization", token);
+        }
     }
 
     public static bool ValidateCertificate(HttpRequestMessage request, X509Certificate2? cert, X509Chain? chain, SslPolicyErrors errors)
@@ -63,6 +74,18 @@ public class EcloudClient
         var request = new SecureRequest { AuthCode = authCode };
         var response = await _client.PostAsJsonAsync("auth/account/session/secure?identity_type=lotus", request, cancellationToken);
         return await GetResponseAsync<SecureResponse>(response, cancellationToken);
+    }
+
+    public async Task<VehicleStatusResponse> GetVehicleStatus(string vin, string userId, CancellationToken cancellationToken)
+    {
+        var response = await _client.GetAsync($"remote-control/vehicle/status/{vin}?userId={userId}&latest=true&target=more%2Cbasic", cancellationToken);
+        return await GetResponseAsync<VehicleStatusResponse>(response, cancellationToken);
+    }
+
+    public async Task GetVehicleState(string vin, string userId, CancellationToken cancellationToken)
+    {
+        var response = await _client.GetAsync($"remote-control/vehicle/status/state/{vin}?userId={userId}", cancellationToken);
+        await CheckResponseAsync(response, cancellationToken);
     }
 
     private async Task CheckResponseAsync(HttpResponseMessage message, CancellationToken cancellationToken)
