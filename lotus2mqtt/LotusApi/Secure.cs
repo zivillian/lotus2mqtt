@@ -5,7 +5,7 @@ namespace lotus2mqtt.LotusApi;
 public class SecureRequest
 {
     [JsonPropertyName("authCode")]
-    public string AuthCode { get; set; }
+    public string? AuthCode { get; set; }
 }
 
 public class SecureResponse
@@ -14,11 +14,11 @@ public class SecureResponse
     public int ExpiresIn { get; set; }
 
     [JsonPropertyName("accessToken")]
-    public string AccessToken { get; set; }
+    public string? AccessToken { get; set; }
 
     [JsonPropertyName("refreshToken")]
-    public string RefreshToken { get; set; }
+    public string? RefreshToken { get; set; }
 
     [JsonPropertyName("userId")]
-    public string UserId { get; set; }
+    public string? UserId { get; set; }
 }

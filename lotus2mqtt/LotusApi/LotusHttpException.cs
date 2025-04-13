@@ -2,10 +2,10 @@
 
 public class LotusHttpException : Exception
 {
-    public LotuscarsResponse Response { get; init; }
+    public LotuscarsResponse? Response { get; init; }
 
-    public LotusHttpException(LotuscarsResponse response)
-        :base(response.Message)
+    public LotusHttpException(LotuscarsResponse? response)
+        :base(response?.Message??"No response received")
     {
         Response = response;
     }

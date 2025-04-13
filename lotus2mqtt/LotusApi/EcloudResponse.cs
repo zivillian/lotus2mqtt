@@ -6,18 +6,18 @@ namespace lotus2mqtt.LotusApi;
 public class EcloudResponse<T>: EcloudResponse
 {
     [JsonPropertyName("data")]
-    public T Data { get; set; }
+    public T? Data { get; set; }
 }
 
 public class EcloudResponse
 {
     [JsonPropertyName("code")]
     [JsonConverter(typeof(CodeConverter))]
-    public string Code { get; set; }
+    public string? Code { get; set; }
 
 
     [JsonPropertyName("message")]
-    public string Message { get; set; }
+    public string? Message { get; set; }
 
     [JsonPropertyName("success")]
     public bool Success { get; set; }

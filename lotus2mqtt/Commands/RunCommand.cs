@@ -24,7 +24,13 @@ public class RunCommand : BaseCommand
         if (!await CheckAccessTokenAsync(cancellationToken))
         {
             Log.LogError("AccessToken expired - please run configure");
-            return -1;
+            return -2;
+        }
+
+        if (Config.Account.UserId is null)
+        {
+            Log.LogError("UserId missing - please run configure");
+            return -3;
         }
 
         var cars = await GetCarsAsync(cancellationToken);
@@ -37,7 +43,7 @@ public class RunCommand : BaseCommand
             {
                 foreach (var car in cars)
                 {
-                    await PublishStatusAsync(car, mqtt, cancellationToken);
+                    await PublishStatusAsync(car, Config.Account.UserId, mqtt, cancellationToken);
                 }
                 await timer.WaitForNextTickAsync(cancellationToken);
             }
@@ -49,9 +55,9 @@ public class RunCommand : BaseCommand
         return 0;
     }
 
-    private async Task PublishStatusAsync(string vin, IMqttClient mqtt, CancellationToken cancellationToken)
+    private async Task PublishStatusAsync(string vin, string userId, IMqttClient mqtt, CancellationToken cancellationToken)
     {
-        var status = await EcloudClient.GetVehicleStatusAsync(vin, Config.Account.UserId, cancellationToken);
+        var status = await EcloudClient.GetVehicleStatusAsync(vin, userId, cancellationToken);
         await PublishAsync(mqtt, $"lotus/{vin}", status.VehicleStatus, cancellationToken);
 
         var soc = await EcloudClient.GetVehicleStatusSocAsync(vin, cancellationToken);
@@ -109,7 +115,7 @@ public class RunCommand : BaseCommand
     private async Task<string[]> GetCarsAsync(CancellationToken cancellationToken)
     {
         var cars = await LotusClient.GetControlCars(cancellationToken);
-        return cars.Select(x => x.VIN).ToArray();
+        return cars.Select(x => x.VIN).Where(x => x is not null).OfType<string>().ToArray();
     }
 
     private async Task<IMqttClient> ConnectMqttAsync(CancellationToken cancellationToken)

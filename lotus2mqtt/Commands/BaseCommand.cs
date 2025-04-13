@@ -13,7 +13,7 @@ namespace lotus2mqtt.Commands;
 public abstract class BaseCommand
 {
     [Option('c', "config", Default = "lotus2mqtt.yml", HelpText = "path to yaml config file")]
-    public string ConfigFile { get; set; }
+    public string ConfigFile { get; set; } = "lotus2mqtt.yml";
 
     [Option('d', "debug", Default = false, HelpText = "enable debug logging")]
     public bool Debug { get; set; }
@@ -22,29 +22,16 @@ public abstract class BaseCommand
 
     protected ILogger Log { get; private set; }
 
-    protected LotusConfig Config { get; private set; }
+    protected LotusConfig Config { get; private set; } = new();
 
     protected LotuscarsClient LotusClient { get; private set; }
 
     protected EcloudClient EcloudClient { get; private set; }
 
-    protected async Task InitAsync(CancellationToken cancellationToken)
+    public BaseCommand()
     {
         LoggerFactory = Factory.Create(x => x.SetMinimumLevel(Debug ? LogLevel.Trace : LogLevel.Error).AddConsole());
-        Log = LoggerFactory.CreateLogger(this.GetType());
-        var file = new FileInfo(ConfigFile);
-        if (file.Exists)
-        {
-            var deserializer = new Deserializer();
-            using var content = file.OpenText();
-            Config = deserializer.Deserialize<LotusConfig>(content);
-        }
-        else
-        {
-            Config = new LotusConfig();
-            await SaveConfigAsync(cancellationToken);
-        }
-
+        Log = LoggerFactory.CreateLogger(GetType());
         var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
         var lotusHttpOptions = new HttpClientFactoryOptions
         {
@@ -74,6 +61,21 @@ public abstract class BaseCommand
                 InnerHandler = certHandler
             }
         }));
+    }
+
+    protected async Task InitAsync(CancellationToken cancellationToken)
+    {
+        var file = new FileInfo(ConfigFile);
+        if (file.Exists)
+        {
+            var deserializer = new Deserializer();
+            using var content = file.OpenText();
+            Config = deserializer.Deserialize<LotusConfig>(content);
+        }
+        else
+        {
+            await SaveConfigAsync(cancellationToken);
+        }
     }
 
     protected async Task SaveConfigAsync(CancellationToken cancellationToken)
@@ -112,7 +114,7 @@ public abstract class BaseCommand
         }
         catch (EcloudHttpException ex)
         {
-            if (ex.Response.Code == "1402")
+            if (ex.Response?.Code == "1402")
             {
                 LotusClient.SetToken(null);
                 return false;

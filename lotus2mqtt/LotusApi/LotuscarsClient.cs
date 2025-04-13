@@ -60,7 +60,7 @@ public class LotuscarsClient
     {
         message.EnsureSuccessStatusCode();
         var response = await message.Content.ReadFromJsonAsync<LotuscarsResponse>(cancellationToken);
-        if (!response.Success)
+        if (response?.Success != true)
         {
             throw new LotusHttpException(response);
         }
@@ -70,10 +70,12 @@ public class LotuscarsClient
     {
         message.EnsureSuccessStatusCode();
         var response = await message.Content.ReadFromJsonAsync<LotuscarsResponse<T>>(cancellationToken);
-        if (!response.Success)
+        if (response?.Success != true)
         {
             throw new LotusHttpException(response);
         }
+        if (response.Data is null)
+            throw new NullReferenceException("data of response is null");
         return response.Data;
     }
 }

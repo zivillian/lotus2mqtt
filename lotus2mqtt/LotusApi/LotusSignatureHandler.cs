@@ -18,7 +18,7 @@ public class LotusSignatureHandler : DelegatingHandler
     {
         var secret = "1fb43823557d423f940d8f7da9081b72";
         var nonce = Guid.NewGuid().ToString();
-        var query = HttpUtility.ParseQueryString(request.RequestUri.Query);
+        var query = HttpUtility.ParseQueryString(request.RequestUri!.Query);
         var queryParameter = String.Join('&', request.RequestUri.Query
             .Replace("+", "%20")
             .Replace("*", "%2A")
@@ -52,13 +52,14 @@ public class LotusSignatureHandler : DelegatingHandler
         return base.SendAsync(request, cancellationToken);
     }
 
-    private readonly FieldInfo MediaTypeField = typeof(MediaTypeHeaderValue).GetField("_mediaType", BindingFlags.NonPublic | BindingFlags.Instance);
+    private readonly FieldInfo? MediaTypeField = typeof(MediaTypeHeaderValue).GetField("_mediaType", BindingFlags.NonPublic | BindingFlags.Instance);
     private void FixAcceptHeader(MediaTypeWithQualityHeaderValue headersAccept)
     {
         //https://github.com/dotnet/runtime/issues/21131#issue-558185129
         //https://github.com/dotnet/runtime/issues/30171
         //https://github.com/dotnet/runtime/pull/792#issuecomment-611125494
         //but it's still broken
+        if (MediaTypeField is null) throw new Exception("MediaTypeField not found via reflection");
         headersAccept.Parameters.Clear();
         MediaTypeField.SetValue(headersAccept, "application/json;responseformat=3");
     }

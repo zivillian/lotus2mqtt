@@ -2,10 +2,10 @@
 
 public class EcloudHttpException : Exception
 {
-    public EcloudResponse Response { get; init; }
+    public EcloudResponse? Response { get; init; }
 
-    public EcloudHttpException(EcloudResponse response)
-        :base(response.Message)
+    public EcloudHttpException(EcloudResponse? response)
+        : base(response?.Message ?? "No response received")
     {
         Response = response;
     }

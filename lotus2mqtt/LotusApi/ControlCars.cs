@@ -8,5 +8,5 @@ public class ControlCarsResponse
     public long Id { get; set; }
 
     [JsonPropertyName("vin")]
-    public string VIN { get; set; }
+    public string? VIN { get; set; }
 }

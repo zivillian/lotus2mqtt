@@ -98,7 +98,7 @@ public class EcloudClient
     {
         message.EnsureSuccessStatusCode();
         var response = await message.Content.ReadFromJsonAsync<EcloudResponse>(cancellationToken);
-        if (!response.Success)
+        if (response?.Success != true)
         {
             throw new EcloudHttpException(response);
         }
@@ -108,10 +108,13 @@ public class EcloudClient
     {
         message.EnsureSuccessStatusCode();
         var response = await message.Content.ReadFromJsonAsync<EcloudResponse<T>>(cancellationToken);
-        if (!response.Success)
+        if (response?.Success != true)
         {
             throw new EcloudHttpException(response);
         }
+
+        if (response.Data is null)
+            throw new NullReferenceException("data of response is null");
         return response.Data;
     }
 }

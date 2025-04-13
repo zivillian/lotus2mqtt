@@ -11,7 +11,7 @@ public class LoginRequest
     public string MobileAreaCode { get; set; } = "49";
 
     [JsonPropertyName("code")]
-    public string Code { get; set; }
+    public string? Code { get; set; }
 
     [JsonPropertyName("loginType")]
     public string LoginType { get; set; } = "3";
@@ -23,14 +23,14 @@ public class LoginRequest
     public string AccountType { get; set; } = "2";
 
     [JsonPropertyName("account")]
-    public string Email { get; set; }
+    public string? Email { get; set; }
 }
 
 public class LoginResponse
 {
     [JsonPropertyName("token")]
-    public string Token { get; set; }
+    public string? Token { get; set; }
 
     [JsonPropertyName("email")]
-    public string Email { get; set; }
+    public string? Email { get; set; }
 }

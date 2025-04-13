@@ -77,6 +77,8 @@ public class ConfigCommand : BaseCommand
     {
         if (await CheckAccessTokenAsync(cancellationToken)) return;
         var response = await LotusClient.GetCodeAsync(cancellationToken);
+        if (String.IsNullOrEmpty(response.AccessCode))
+            throw new ArgumentNullException(message: "no access code returned", null);
         var tokens = await EcloudClient.SecureAsync(response.AccessCode, cancellationToken);
         Config.Account.AccessToken = tokens.AccessToken;
         Config.Account.RefreshToken = tokens.RefreshToken;
@@ -100,8 +102,12 @@ public class ConfigCommand : BaseCommand
 
     private async Task GetCaptchaAsync(string email, CancellationToken cancellationToken)
     {
-        var captcha = Prompt.Input<string>("Please paste the captcha result from https://<some-url>");
-        var geetest = JsonSerializer.Deserialize<GeetestCaptchaResult>(captcha);
+        GeetestCaptchaResult? geetest = null;
+        while (geetest is null)
+        {
+            var captcha = Prompt.Input<string>("Please paste the captcha result from https://<some-url>");
+            geetest = JsonSerializer.Deserialize<GeetestCaptchaResult>(captcha);
+        }
         var request = new GetCaptchaRequest
         {
             Email = email,
