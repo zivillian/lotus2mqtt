@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Web;
 
 namespace lotus2mqtt.LotusApi;
 
@@ -17,12 +18,15 @@ public class LotusSignatureHandler : DelegatingHandler
     {
         var secret = "1fb43823557d423f940d8f7da9081b72";
         var nonce = Guid.NewGuid().ToString();
-        var queryParameter = request.RequestUri.Query
+        var query = HttpUtility.ParseQueryString(request.RequestUri.Query);
+        var queryParameter = String.Join('&', request.RequestUri.Query
             .Replace("+", "%20")
             .Replace("*", "%2A")
             .Replace("%7E", "~")
             .Replace(",", "%2C")
-            .TrimStart('?');
+            .TrimStart('?')
+            .Split('&')
+            .Order());
         var bodyChecksum = GetBodyChecksum(request.Content);
         var timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
         var method = request.Method.Method;
