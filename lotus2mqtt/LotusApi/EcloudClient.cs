@@ -76,10 +76,16 @@ public class EcloudClient
         return await GetResponseAsync<SecureResponse>(response, cancellationToken);
     }
 
-    public async Task<VehicleStatusResponse> GetVehicleStatus(string vin, string userId, CancellationToken cancellationToken)
+    public async Task<VehicleStatusResponse> GetVehicleStatusAsync(string vin, string userId, CancellationToken cancellationToken)
     {
-        var response = await _client.GetAsync($"remote-control/vehicle/status/{vin}?userId={userId}&latest=true&target=more%2Cbasic", cancellationToken);
+        var response = await _client.GetAsync($"remote-control/vehicle/status/{vin}?userId={userId}&latest=true", cancellationToken);
         return await GetResponseAsync<VehicleStatusResponse>(response, cancellationToken);
+    }
+
+    public async Task<VehicleStatusSocResponse> GetVehicleStatusSocAsync(string vin, CancellationToken cancellationToken)
+    {
+        var response = await _client.GetAsync($"remote-control/vehicle/status/soc/{vin}?setting=charging", cancellationToken);
+        return await GetResponseAsync<VehicleStatusSocResponse>(response, cancellationToken);
     }
 
     public async Task GetVehicleState(string vin, string userId, CancellationToken cancellationToken)

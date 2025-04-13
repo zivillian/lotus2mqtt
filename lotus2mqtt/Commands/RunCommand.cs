@@ -1,4 +1,6 @@
-﻿using CommandLine;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+using CommandLine;
 using lotus2mqtt.Mqtt;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
@@ -49,8 +51,59 @@ public class RunCommand : BaseCommand
 
     private async Task PublishStatusAsync(string vin, IMqttClient mqtt, CancellationToken cancellationToken)
     {
-        var status = await EcloudClient.GetVehicleStatus(vin, Config.Account.UserId, cancellationToken);
-        throw new NotImplementedException();
+        var status = await EcloudClient.GetVehicleStatusAsync(vin, Config.Account.UserId, cancellationToken);
+        await PublishAsync(mqtt, $"lotus/{vin}", status.VehicleStatus, cancellationToken);
+
+        var soc = await EcloudClient.GetVehicleStatusSocAsync(vin, cancellationToken);
+        var message = new MqttApplicationMessageBuilder()
+            .WithTopic($"lotus/{vin}/soc/soc")
+            .WithPayload(soc.Soc)
+            .Build();
+        await mqtt.PublishAsync(message, cancellationToken);
+        message = new MqttApplicationMessageBuilder()
+            .WithTopic($"lotus/{vin}/soc/socTime")
+            .WithPayload(soc.SocTime)
+            .Build();
+        await mqtt.PublishAsync(message, cancellationToken);
+    }
+
+    private async Task PublishAsync(IMqttClient mqtt, string topic, JsonNode? node, CancellationToken cancellationToken)
+    {
+        string? payload = null;
+        if (node is not null)
+        {
+            switch (node.GetValueKind())
+            {
+                case JsonValueKind.Object:
+                    var json = node.AsObject();
+                    foreach (var property in json)
+                    {
+                        await PublishAsync(mqtt, $"{topic}/{property.Key}", property.Value, cancellationToken);
+                    }
+
+                    return;
+                case JsonValueKind.String:
+                    payload = node.GetValue<string>();
+                    break;
+                //case JsonValueKind.Number:
+                //    break;
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    payload = node.GetValue<bool>().ToString().ToLower();
+                    break;
+                case JsonValueKind.Null:
+                    payload = null;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        var message = new MqttApplicationMessageBuilder()
+            .WithTopic(topic)
+            .WithPayload(payload)
+            .Build();
+        await mqtt.PublishAsync(message, cancellationToken);
     }
 
     private async Task<string[]> GetCarsAsync(CancellationToken cancellationToken)
@@ -75,6 +128,7 @@ public class RunCommand : BaseCommand
         {
             if (e.ClientWasConnected)
             {
+                if (cancellationToken.IsCancellationRequested) return;
                 await client.ConnectAsync(client.Options, cancellationToken);
             }
         };
