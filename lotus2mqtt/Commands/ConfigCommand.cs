@@ -105,7 +105,7 @@ public class ConfigCommand : BaseCommand
         GeetestCaptchaResult? geetest = null;
         while (geetest is null)
         {
-            var captcha = Prompt.Input<string>("Please paste the captcha result from https://<some-url>");
+            var captcha = Prompt.Input<string>("Please paste the captcha result from https://zivillian.github.io/lotus2mqtt/");
             geetest = JsonSerializer.Deserialize<GeetestCaptchaResult>(captcha);
         }
         var request = new GetCaptchaRequest
