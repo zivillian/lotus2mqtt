@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lotus Geetest</title>
+    </head>
+    <body>
+        <script src="gt4.js"></script>
+        <script type="text/javascript">
+            (function(){
+                const config = {
+                    captchaId: "32b68e20f3452bce5702a6ab3dc7bbf3",
+                    hideBar: ['close', 'refresh'],
+                    hideSuccess: true,
+                    product: "bind",
+                    language: "de-DE"
+                };
+                initGeetest4(config, function(captcha){
+                    captcha.onSuccess(function(){
+                        console.log('Success');
+                        const result = captcha.getValidate();
+                        console.log(result);
+                        navigator.clipboard.writeText(JSON.stringify(result));
+                        alert("captcha result copiedd to clipboard")
+                    })
+                    .onReady(function(){
+                        console.log('Ready');
+                        captcha.showBox();
+                    })
+                    .onError(function(){
+                        console.log('Error');
+                    });
+                });
+            })();
+        </script>
+    </body>
+</html>
