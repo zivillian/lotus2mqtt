@@ -1,4 +1,5 @@
-﻿using CommandLine;
+﻿using System.Security.Cryptography.X509Certificates;
+using CommandLine;
 using lotus2mqtt.Config;
 using lotus2mqtt.LotusApi;
 using Microsoft.Extensions.Http;
@@ -23,7 +24,9 @@ public abstract class BaseCommand
 
     protected LotusConfig Config { get; private set; }
 
-    protected LotuscarsClient LotusClient { get; private set; } 
+    protected LotuscarsClient LotusClient { get; private set; }
+
+    protected EcloudClient EcloudClient { get; private set; }
 
     protected async Task InitAsync(CancellationToken cancellationToken)
     {
@@ -45,13 +48,28 @@ public abstract class BaseCommand
         var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
         var httpOptions = new HttpClientFactoryOptions
         {
-            ShouldRedactHeaderValue = x => "token".Equals(x, StringComparison.InvariantCultureIgnoreCase)
+            ShouldRedactHeaderValue = x => "token".Equals(x, StringComparison.InvariantCultureIgnoreCase),
         };
         var httpClient = new HttpClient(new LoggingHttpMessageHandler(httpLogger, httpOptions)
         {
             InnerHandler = new HttpClientHandler()
         });
         LotusClient = new LotuscarsClient(httpClient);
+        var certHandler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = EcloudClient.ValidateCertificate,
+            ClientCertificates =
+            {
+                EcloudClient.ClientCert
+            }
+        };
+        EcloudClient = new EcloudClient(new HttpClient(new LotusSignatureHandler
+        {
+            InnerHandler = new LoggingHttpMessageHandler(httpLogger, httpOptions)
+            {
+                InnerHandler = certHandler
+            }
+        }));
     }
 
     protected async Task SaveConfigAsync(CancellationToken cancellationToken)
@@ -63,5 +81,20 @@ public abstract class BaseCommand
         serializer.Serialize(writer, Config);
         await writer.FlushAsync(cancellationToken);
         await configFile.FlushAsync(cancellationToken);
+    }
+
+    protected async Task<bool> CheckTokenAsync(CancellationToken cancellationToken)
+    {
+        LotusClient.SetToken(Config.Account.Token);
+        try
+        {
+            await LotusClient.InfoAsync(cancellationToken);
+            return true;
+        }
+        catch (LotusHttpException)
+        {
+            LotusClient.SetToken(null);
+            return false;
+        }
     }
 }

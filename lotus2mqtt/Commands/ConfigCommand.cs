@@ -1,7 +1,12 @@
 ﻿using System;
 using System.Text.Json;
 using CommandLine;
+using lotus2mqtt.Config;
 using lotus2mqtt.LotusApi;
+using lotus2mqtt.Mqtt;
+using Microsoft.Extensions.Logging;
+using MQTTnet.Exceptions;
+using MQTTnet;
 using Sharprompt;
 
 namespace lotus2mqtt.Commands;
@@ -13,7 +18,69 @@ public class ConfigCommand : BaseCommand
     {
         await InitAsync(cancellationToken);
         await LoginAsync(cancellationToken);
+        await GetAuthTokenAsync(cancellationToken);
+        while (!await TestMqttAsync(cancellationToken))
+        {
+            ConfigureMqtt();
+        }
         return 0;
+    }
+
+    private void ConfigureMqtt()
+    {
+        Config.Mqtt.Host = Prompt.Input<string>("Please enter your mqtt server host or ip", defaultValue: Config.Mqtt.Host);
+
+        if (!Prompt.Confirm("Does your mqtt server require credentials?"))
+        {
+            Config.Mqtt.Username = String.Empty;
+            Config.Mqtt.Password = String.Empty;
+        }
+        else
+        {
+            Config.Mqtt.Username = Prompt.Input<string>("Please enter your mqtt username", defaultValue: Config.Mqtt.Username);
+            Config.Mqtt.Password = Prompt.Password("Please enter your mqtt password");
+        }
+
+        Config.Mqtt.UseTls = Prompt.Confirm("Do you want to use TLS on port 8883?");
+    }
+
+    private async Task<bool> TestMqttAsync(CancellationToken cancellationToken)
+    {
+        if (String.IsNullOrEmpty(Config.Mqtt.Host)) return false;
+
+        try
+        {
+            var factory = new MqttClientFactory(new MqttLogger(LoggerFactory));
+            using var client = factory.CreateMqttClient();
+            var builder = new MqttClientOptionsBuilder()
+                .WithTcpServer(Config.Mqtt.Host)
+                .WithTlsOptions(new MqttClientTlsOptions { UseTls = Config.Mqtt.UseTls });
+            if (!String.IsNullOrEmpty(Config.Mqtt.Username) && !String.IsNullOrEmpty(Config.Mqtt.Password))
+            {
+                builder = builder.WithCredentials(Config.Mqtt.Username, Config.Mqtt.Password);
+            }
+
+            await client.ConnectAsync(builder.Build(), cancellationToken);
+            await client.DisconnectAsync(cancellationToken: cancellationToken);
+        }
+        catch (MqttCommunicationException ex)
+        {
+            Log.LogError($"Mqtt connection failed: {ex.Message}");
+            return false;
+        }
+
+        await SaveConfigAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task GetAuthTokenAsync(CancellationToken cancellationToken)
+    {
+        if (!String.IsNullOrEmpty(Config.Account.AccessToken)) return;//todo check token
+        var response = await LotusClient.GetCodeAsync(cancellationToken);
+        var tokens = await EcloudClient.SecureAsync(response.AccessCode, cancellationToken);
+        Config.Account.AccessToken = tokens.AccessToken;
+        Config.Account.RefreshToken = tokens.RefreshToken;
+        await SaveConfigAsync(cancellationToken);
     }
 
     private async Task LoginAsync(CancellationToken cancellationToken)
@@ -58,20 +125,5 @@ public class ConfigCommand : BaseCommand
         Config.Account.Email = response.Email;
         Config.Account.Token = response.Token;
         await SaveConfigAsync(cancellationToken);
-    }
-
-    private async Task<bool> CheckTokenAsync(CancellationToken cancellationToken)
-    {
-        LotusClient.SetToken(Config.Account.Token);
-        try
-        {
-            await LotusClient.InfoAsync(cancellationToken);
-            return true;
-        }
-        catch (LotusHttpException)
-        {
-            LotusClient.SetToken(null);
-            return false;
-        }
     }
 }

@@ -10,9 +10,10 @@ Console.CancelKeyPress += (_, e) =>
 
 try
 {
-    return await Parser.Default.ParseArguments<ConfigCommand>(args)
+    return await Parser.Default.ParseArguments<ConfigCommand, RunCommand>(args)
         .MapResult(
-            c => c.RunAsync(cts.Token),
+            (ConfigCommand c) => c.RunAsync(cts.Token),
+            (RunCommand r) => r.RunAsync(cts.Token),
             _ => Task.FromResult(1));
 }
 catch (Exception ex)
