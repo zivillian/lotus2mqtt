@@ -1,4 +1,4 @@
-using System.Security.Cryptography.X509Certificates;
+﻿using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 using lotus2mqtt.Config;
 using lotus2mqtt.LotusApi;
@@ -153,7 +153,7 @@ public abstract class BaseCommand
         {
             if (ex.Response?.Code == "1402")
             {
-                LotusClient.SetToken(null);
+                EcloudClient.SetToken(null);
                 return false;
             }
 
