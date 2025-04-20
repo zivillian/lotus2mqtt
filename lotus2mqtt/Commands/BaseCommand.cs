@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 using lotus2mqtt.Config;
 using lotus2mqtt.LotusApi;
@@ -18,49 +18,86 @@ public abstract class BaseCommand
     [Option('d', "debug", Default = false, HelpText = "enable debug logging")]
     public bool Debug { get; set; }
 
-    protected ILoggerFactory LoggerFactory { get; private set; }
+    private ILoggerFactory? _loggerFactory;
+    protected ILoggerFactory LoggerFactory { 
+        get
+        {
+            if (_loggerFactory is null)
+            {
+                _loggerFactory = Factory.Create(x => x.SetMinimumLevel(Debug ? LogLevel.Trace : LogLevel.Error).AddConsole());
+            }
+            return _loggerFactory;
+        }
+    }
 
-    protected ILogger Log { get; private set; }
+    private ILogger? _log;
+    protected ILogger Log 
+    { 
+        get
+        {
+            if (_log is null)
+            {
+                _log = LoggerFactory.CreateLogger(GetType());
+            }
+            return _log;
+        }
+    }
 
     protected LotusConfig Config { get; private set; } = new();
 
-    protected LotuscarsClient LotusClient { get; private set; }
-
-    protected EcloudClient EcloudClient { get; private set; }
-
-    public BaseCommand()
+    private LotuscarsClient? _lotusClient;
+    protected LotuscarsClient LotusClient 
     {
-        LoggerFactory = Factory.Create(x => x.SetMinimumLevel(Debug ? LogLevel.Trace : LogLevel.Error).AddConsole());
-        Log = LoggerFactory.CreateLogger(GetType());
-        var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
-        var lotusHttpOptions = new HttpClientFactoryOptions
+        get
         {
-            ShouldRedactHeaderValue = x => "token".Equals(x, StringComparison.InvariantCultureIgnoreCase),
-        };
-        var httpClient = new HttpClient(new LoggingHttpMessageHandler(httpLogger, lotusHttpOptions)
-        {
-            InnerHandler = new HttpClientHandler()
-        });
-        LotusClient = new LotuscarsClient(httpClient);
-        var certHandler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = EcloudClient.ValidateCertificate,
-            ClientCertificates =
+            if (_lotusClient is null)
             {
-                EcloudClient.ClientCert
+                var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
+                var lotusHttpOptions = new HttpClientFactoryOptions
+                {
+                    ShouldRedactHeaderValue = x => "token".Equals(x, StringComparison.InvariantCultureIgnoreCase),
+                };
+                var httpClient = new HttpClient(new LoggingHttpMessageHandler(httpLogger, lotusHttpOptions)
+                {
+                    InnerHandler = new HttpClientHandler()
+                });
+                _lotusClient = new LotuscarsClient(httpClient);
             }
-        };
-        var ecloudHttpOptions = new HttpClientFactoryOptions
+            return _lotusClient;
+        }
+    }
+
+    private EcloudClient? _ecloudClient;
+    protected EcloudClient EcloudClient 
+    { 
+        get
         {
-            ShouldRedactHeaderValue = x => "authorization".Equals(x, StringComparison.InvariantCultureIgnoreCase),
-        };
-        EcloudClient = new EcloudClient(new HttpClient(new LotusSignatureHandler
-        {
-            InnerHandler = new LoggingHttpMessageHandler(httpLogger, ecloudHttpOptions)
+            if (_ecloudClient is null)
             {
-                InnerHandler = certHandler
+                var httpLogger = LoggerFactory.CreateLogger<HttpClient>();
+                var certHandler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = EcloudClient.ValidateCertificate,
+                    ClientCertificates =
+                    {
+                        EcloudClient.ClientCert
+                    }
+                };
+                var ecloudHttpOptions = new HttpClientFactoryOptions
+                {
+                    ShouldRedactHeaderValue = x => "authorization".Equals(x, StringComparison.InvariantCultureIgnoreCase),
+                };
+                _ecloudClient = new EcloudClient(new HttpClient(new LotusSignatureHandler
+                {
+                    InnerHandler = new LoggingHttpMessageHandler(httpLogger, ecloudHttpOptions)
+                    {
+                        InnerHandler = certHandler
+                    }
+                }));
+
             }
-        }));
+            return _ecloudClient;
+        }
     }
 
     protected async Task InitAsync(CancellationToken cancellationToken)
