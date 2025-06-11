@@ -73,17 +73,10 @@ public class ConfigCommand : BaseCommand
         return true;
     }
 
-    private async Task GetAuthTokenAsync(CancellationToken cancellationToken)
+    protected override async Task GetAuthTokenAsync(CancellationToken cancellationToken)
     {
         if (await CheckAccessTokenAsync(cancellationToken)) return;
-        var response = await LotusClient.GetCodeAsync(cancellationToken);
-        if (String.IsNullOrEmpty(response.AccessCode))
-            throw new ArgumentNullException(message: "no access code returned", null);
-        var tokens = await EcloudClient.SecureAsync(response.AccessCode, cancellationToken);
-        Config.Account.AccessToken = tokens.AccessToken;
-        Config.Account.RefreshToken = tokens.RefreshToken;
-        Config.Account.UserId = tokens.UserId;
-        await SaveConfigAsync(cancellationToken);
+        await base.GetAuthTokenAsync(cancellationToken);
     }
 
     private async Task LoginAsync(CancellationToken cancellationToken)

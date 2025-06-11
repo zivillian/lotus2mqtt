@@ -23,6 +23,10 @@ public class RunCommand : BaseCommand
         }
         if (!await CheckAccessTokenAsync(cancellationToken))
         {
+            await GetAuthTokenAsync(cancellationToken);
+        }
+        if (!await CheckAccessTokenAsync(cancellationToken))
+        {
             Log.LogError("AccessToken expired - please run configure");
             return -2;
         }
