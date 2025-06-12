@@ -54,14 +54,16 @@ public class EcloudClient
 
     public void SetToken(string? token)
     {
-        if (String.IsNullOrEmpty(token))
+        if (_client.DefaultRequestHeaders.Contains("Authorization"))
         {
             _client.DefaultRequestHeaders.Remove("Authorization");
         }
-        else
+        if (String.IsNullOrEmpty(token))
         {
-            _client.DefaultRequestHeaders.Add("Authorization", token);
+            return;
         }
+
+        _client.DefaultRequestHeaders.Add("Authorization", token);
     }
 
     public static bool ValidateCertificate(HttpRequestMessage request, X509Certificate2? cert, X509Chain? chain, SslPolicyErrors errors)
